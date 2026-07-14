@@ -2,9 +2,6 @@ import socket
 import sys
 from typing import List
 
-document = None
-
-
 INTERACTABLE_TAGS = ["link", "button"]
 
 
@@ -12,20 +9,35 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "hypy://localhost/index.hypy"
     url = URL(path)
     document = Document(url)
-    document.parse(url.request())
+    document.parse(url, url.request())
     for script in document.scripts:
         exec(script)
     print(document.root)
+    while True:
+        cmd = input("> ")
+        if not cmd:
+            break
+        if cmd.startswith("click "):
+            document.click(int(cmd.removeprefix("click ")))
+        for script in document.scripts:
+            exec(script)
+        print(document.root)
 
 
 class URL:
     def __init__(self, url: str, relative_to: URL | None = None) -> None:
-        self.scheme, url = url.split("://", 1)
-        assert self.scheme == "hypy"
+        if "://" in url:
+            self.scheme, url = url.split("://", 1)
+        elif relative_to:
+            self.scheme = relative_to.scheme
         if "/" not in url:
             url = url + "/"
-        self.host, url = url.split("/", 1)
-        self.path = "/" + url
+        if url.startswith("/") and relative_to:
+            self.host = relative_to.host
+            self.path = url
+        else:
+            self.host, url = url.split("/", 1)
+            self.path = "/" + url
 
     def request(self) -> str:
         sock = socket.socket(
@@ -57,7 +69,7 @@ class URL:
 
 class Document:
     def __init__(self, base_url: URL) -> None:
-        self.root = Element()
+        self.root = Element(self)
         self.base_url = base_url
         self.scripts: List[str] = []
         self.id_map = {}
@@ -65,15 +77,23 @@ class Document:
         self.interactables = []
         self.element_stack = [self.root]
 
-    def parse(self, content: str) -> None:
+    def parse(self, base_url: URL, content: str) -> None:
+        self.root = Element(self)
+        self.base_url = base_url
+        self.scripts = []
+        self.id_map = {}
+        self.interactable_index = 0
+        self.interactables = []
+        self.element_stack = [self.root]
         last_text_node: TextElement | None = None
+
         for line in content.splitlines():
             if line.startswith("~~< "):
                 script_url = URL(line.removeprefix("~~< "))
                 self.scripts.append(script_url.request())
             elif line.strip():
                 indent = (len(line) - len(line.lstrip(" "))) // 4
-                new_element = element_from_line(line.strip())
+                new_element = element_from_line(self, line.strip())
 
                 self.element_stack = self.element_stack[0 : indent + 1]
                 if isinstance(new_element, Element):
@@ -95,7 +115,17 @@ class Document:
         if element.tag in INTERACTABLE_TAGS:
             element.attributes["interact_index"] = self.interactable_index
             self.interactable_index += 1
-            self.interactables.extend([element])
+            self.interactables.append(element)
+
+    def click(self, index: int) -> None:
+        if index < 0 or index >= len(self.interactables):
+            return
+        element = self.interactables[index]
+        element.click()
+
+    def navigate(self, url_str: str):
+        url = URL(url_str, self.base_url)
+        self.parse(url, url.request())
 
     def __repr__(self) -> str:
         return "\n".join([child.__repr__() for child in self.root.children])
@@ -104,17 +134,19 @@ class Document:
         return self.id_map[target]
 
 
-def element_from_line(line: str) -> Element | TextElement:
+def element_from_line(document: Document, line: str) -> Element | TextElement:
     if line.startswith("@"):
+        line = line.lstrip("@")
         tag, attribute_str = line.removesuffix(":").split(" ", 1)
-        new_element = Element(tag, attribute_str)
+        new_element = Element(document, tag, attribute_str)
         return new_element
     else:
         return TextElement(line.strip())
 
 
 class Element:
-    def __init__(self, tag="root", attribute_str="") -> None:
+    def __init__(self, document: Document, tag="root", attribute_str="") -> None:
+        self.document = document
         self.tag = tag
         self.children: List[Element | TextElement] = []
         self.attributes = {}
@@ -125,6 +157,12 @@ class Element:
                     self.attributes[pair_tuple[0]] = True
                 case 2:
                     self.attributes[pair_tuple[0]] = pair_tuple[1]
+
+    def click(self):
+        if self.tag not in INTERACTABLE_TAGS:
+            return
+        if self.tag == "link" and "url" in self.attributes:
+            self.document.navigate(self.attributes["url"])
 
     def __repr__(self) -> str:
         repr_lines = []
@@ -159,6 +197,8 @@ class TextElement:
     def __repr__(self) -> str:
         return "text: " + self.text
 
+
+document = None
 
 if __name__ == "__main__":
     main()
