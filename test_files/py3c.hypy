@@ -1,5 +1,5 @@
 @heading:
-    Very official HyperPython specification
+    Very official HyperPy specification
 
 Put "@" at the beginning of a line to start a tag,
 start the tag content with ":" and a newline,
