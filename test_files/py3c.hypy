@@ -1,0 +1,7 @@
+@heading:
+    Very official HyperPython specification
+
+Put "@" at the beginning of a line to start a tag,
+start the tag content with ":" and a newline,
+close the tag content by adding additional content
+which is deindented (it will also close at EOF).

@@ -1,0 +1,12 @@
+~~< hello.py
+
+@header id=hello:
+    Hello world!
+
+This should all be
+in the same node
+
+Check out the 
+@link /py3c.hypy:
+    "specification"
+!
