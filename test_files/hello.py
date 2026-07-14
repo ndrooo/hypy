@@ -1,2 +1,2 @@
 hello_element = document.getById("hello")
-hello_element.text = "Hello HyperPy!"
+hello_element.children = [TextElement("Hello HyperPy!")]
