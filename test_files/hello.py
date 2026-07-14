@@ -1,2 +1,2 @@
-hello_node = document.getById("hello")
-hello_node.text = "Hello HyperPython"
+hello_element = document.getById("hello")
+hello_element.text = "Hello HyperPython!"
