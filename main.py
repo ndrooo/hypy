@@ -1,5 +1,6 @@
 import socket
 import sys
+from collections.abc import Callable
 from typing import List
 
 INTERACTABLE_TAGS = ["link", "button"]
@@ -150,6 +151,7 @@ class Element:
         self.tag = tag
         self.children: List[Element | TextElement] = []
         self.attributes = {}
+        self.buttonCallback: Callable | None = None
         for pair in attribute_str.split(" "):
             pair_tuple = pair.split("=", 1)
             match len(pair_tuple):
@@ -163,6 +165,11 @@ class Element:
             return
         if self.tag == "link" and "url" in self.attributes:
             self.document.navigate(self.attributes["url"])
+        if self.tag == "button" and self.buttonCallback:
+            self.buttonCallback()
+
+    def on_click(self, callback: Callable):
+        self.buttonCallback = callback
 
     def __repr__(self) -> str:
         repr_lines = []

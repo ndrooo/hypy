@@ -1,4 +1,4 @@
-~~< hypy://localhost/hello.py
+~~< /hello.py
 
 @header id=hello:
     Hello world!
@@ -10,3 +10,9 @@ Check out the
 @link url=/py3c.hypy:
     "specification"
 !
+
+@ id=counter:
+    0
+
+@button id=increment:
+    add one
